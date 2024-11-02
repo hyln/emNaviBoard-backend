@@ -2,21 +2,17 @@
 import subprocess
 import re
 from .auth import Auth
+from .cmd_exec import CmdExec
 class NetworkControl():
-    def __init__(self,auth) -> None:
-        self._token = auth.token
-        self._sudo_prefix = f"echo {self._token['password']} | sudo -S "
-
-        host_name = subprocess.run("hostname", stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
+    def __init__(self,username:str, password:str) -> None:
+        self.cmd_exec = CmdExec(username,password)
+        ret,host_name = self.cmd_exec.run("hostname")
         self._ap_wifi_name = host_name+"_"+"5G"
         self._wifi_device = "wlan0"
         self._ap_name = "wifi_ap"
-        print(self._sudo_prefix )
 
     def set_auth(self,auth:Auth):
-        self._token = auth.token
-        self._sudo_prefix = f"echo {self._token['password']} | sudo -S "
-        print(self._sudo_prefix )
+        pass
 
     def parse_wifi_output(self,output):
         wifi_info = []
@@ -63,11 +59,8 @@ class NetworkControl():
         return self._ap_wifi_name
     def get_current_mode(self):
         try:
-            command = self._sudo_prefix + "nmcli -t -f NAME,TYPE connection show"
-            print(command)
-            result = subprocess.run(command,shell=True, capture_output=True, text=True) # Get the list of all Wi-Fi connections
-            connections = result.stdout.strip()
-            if(self._ap_name in connections):
+            ret,result = self.cmd_exec.run("nmcli -t -f NAME,TYPE connection show",use_sudo=True)
+            if(self._ap_name in result):
                 return "ap"
             else:
                 return "sta"
@@ -82,23 +75,21 @@ class NetworkControl():
             print("In AP mode, can't rescan wifi")
             return False
         elif(mode == "sta"):
-            command = self._sudo_prefix + "nmcli device wifi rescan"
-            result = subprocess.run(command,shell=True, capture_output=True, text=True)
+            ret,_ = self.cmd_exec.run("nmcli device wifi rescan",use_sudo=True)
             print("Rescanning Wi-Fi")
             return True
     
     def clear_all_wifi_connect(self):
         try:
-            command = self._sudo_prefix + "nmcli -t -f NAME,TYPE connection show"
-            result = subprocess.run(command,shell=True, capture_output=True, text=True) # Get the list of all Wi-Fi connections
-            connections = result.stdout.strip().split('\n')
+            ret,result = self.cmd_exec.run("nmcli -t -f NAME,TYPE connection show",use_sudo=True)
+            connections = result.split('\n')
 
             # Delete each Wi-Fi connection
             for connection in connections:
                 name, conn_type = connection.split(':')
                 if conn_type == '802-11-wireless':  # Ensure the connection type is Wi-Fi
-                    command = self._sudo_prefix + f"nmcli connection delete {name}"
-                    result = subprocess.run(command,shell=True, capture_output=True, text=True) # Get the list of all Wi-Fi connections
+                    command = f"nmcli connection delete {name}"
+                    ret,result = self.cmd_exec.run(command,use_sudo=True)
                     print(f"Deleted Wi-Fi connection: {name}")
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -106,33 +97,34 @@ class NetworkControl():
     def start_ap_mode(self):
         ap_device_name= self._ap_name
         # 检测是否已经存在该连接
-        cmd_check_connection = self._sudo_prefix + f"nmcli connection show | grep {ap_device_name}"
-        completedProc = subprocess.run(cmd_check_connection, shell=True)
-        if completedProc.returncode == 0:
-            print(f"connection {ap_device_name}  already exists")      
-            cmd_delete_connection = f"echo {self._token['password']} | sudo -S nmcli connection delete {ap_device_name}"
-            completedProc = subprocess.run(cmd_delete_connection, shell=True)
-            if completedProc.returncode != 0:
+
+        cmd_check_connection = f"nmcli connection show | grep {ap_device_name}"
+        ret,result = self.cmd_exec.run(cmd_check_connection,use_sudo=True)
+        if ret == 0:
+            print(f"connection {ap_device_name}  already exists")  
+            cmd_delete_connection = f"nmcli connection delete {ap_device_name}" 
+            ret,result = self.cmd_exec.run(cmd_delete_connection,use_sudo=True)   
+            if ret != 0:
                 print("connection delete failed")
                 return False
         command_list = [
-            self._sudo_prefix + f"nmcli con add type wifi ifname wlan0 mode ap con-name {ap_device_name} ssid {self._ap_wifi_name }",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} 802-11-wireless.band a",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} 802-11-wireless.channel 149",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} 802-11-wireless-security.key-mgmt wpa-psk",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} 802-11-wireless-security.proto rsn",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} 802-11-wireless-security.group ccmp",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} 802-11-wireless-security.pairwise ccmp",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} 802-11-wireless-security.psk 12341234",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} ipv4.addresses 192.168.109.1/24",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} ipv4.gateway 192.168.109.1",
-            self._sudo_prefix + f"nmcli con modify {ap_device_name} ipv4.method shared",
-            self._sudo_prefix + f"nmcli con up {ap_device_name}"
+            f"nmcli con add type wifi ifname wlan0 mode ap con-name {ap_device_name} ssid {self._ap_wifi_name }",
+            f"nmcli con modify {ap_device_name} 802-11-wireless.band a",
+            f"nmcli con modify {ap_device_name} 802-11-wireless.channel 149",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.key-mgmt wpa-psk",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.proto rsn",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.group ccmp",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.pairwise ccmp",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.psk 12341234",
+            f"nmcli con modify {ap_device_name} ipv4.addresses 192.168.109.1/24",
+            f"nmcli con modify {ap_device_name} ipv4.gateway 192.168.109.1",
+            f"nmcli con modify {ap_device_name} ipv4.method shared",
+            f"nmcli con up {ap_device_name}"
         ]
         for command in command_list:
             print(f"exec: {command}")
-            completedProc = subprocess.run(command, shell=True)
-            if completedProc.returncode != 0:
+            ret,_ = self.cmd_exec.run(command,use_sudo=True)
+            if ret != 0:
                 print("command exec failed")
                 return False,""
         return True, self._ap_wifi_name 
@@ -145,18 +137,18 @@ class NetworkControl():
             time.sleep(5) # 两秒不够
         self.wifi_rescan()
         if password is not None:
-            command = self._sudo_prefix + f"nmcli device wifi connect {ssid} password {password}"
+            command = f"nmcli device wifi connect {ssid} password {password}"
         else:
-            command = self._sudo_prefix + f"nmcli device wifi connect {ssid}"
+            command = f"nmcli device wifi connect {ssid}"
         try:
-            result = subprocess.run(command, shell=True, text=True, capture_output=True)
-            connect_info = result.stdout.strip()
+            ret,result = self.cmd_exec.run(command,use_sudo=True)
+            connect_info = result
             
             if "successfully" in connect_info:
                 print("Connected to WiFi")
                 return True
             else:
-                print(f"Error connecting to WiFi: {result.stderr}")
+                print(f"Error connecting to WiFi: {connect_info}")
                 if(wifi_mode == "ap"):
                     print("Back to AP mode")
                     self.start_ap_mode()
@@ -167,21 +159,21 @@ class NetworkControl():
             return False
     def _scan_wifi_iwlist(self):
         try:
-            command = self._sudo_prefix + f"iwlist {self._wifi_device} scan"
-            result = subprocess.run(command, shell=True, text=True, capture_output=True) # shell=true 一定要有
-            print(result.stdout)
-            if result.returncode != 0:
-                print("Error scanning Wi-Fi:", result.stderr)
+            command = f"iwlist {self._wifi_device} scan"
+            ret,result = self.cmd_exec.run(command,use_sudo=True)
+            print(result)
+            if ret != 0:
+                print("Error scanning Wi-Fi:", result)
                 return []
-            return self.parse_wifi_output(result.stdout)
+            return self.parse_wifi_output(result)
         except subprocess.CalledProcessError as e:
             print(f"Error scanning WiFi: {e}")
             return []
     def _scan_wifi_nmcli(self):
         try:
-            command = self._sudo_prefix + f"nmcli -t -f SSID,SIGNAL,CHAN,ACTIVE,SECURITY dev wifi"
-            result = subprocess.run(command, shell=True, text=True, capture_output=True) # shell=true 一定要有
-            wifi_info = result.stdout.strip().split('\n')
+            command = f"nmcli -t -f SSID,SIGNAL,CHAN,ACTIVE,SECURITY dev wifi"
+            ret,result = self.cmd_exec.run(command,use_sudo=True)
+            wifi_info = result.split('\n')
             wifi_list = []
             for info in wifi_info:
                 parts = info.split(':')

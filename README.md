@@ -1,7 +1,4 @@
 # emNaviBoard Backend
-
-Welcome to the emNaviBoard Backend project. This README provides an overview of the project, setup instructions, and other relevant information.
-
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -17,10 +14,12 @@ The emNaviBoard Backend is a RESTful API service designed to manage and serve da
 
 ## Features
 
-- User authentication and authorization
-- CRUD operations for board items
-- Real-time updates with WebSockets
-- Comprehensive logging and error handling
+emNaviBoard，为机载电脑提供基础功能，
+- 用户登录
+- 集成ttyd
+- 快速网络操作
+- 断电遗忘
+
 
 ## Installation
 
