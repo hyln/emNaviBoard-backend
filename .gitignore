@@ -1,2 +1,4 @@
 *.pyc
 test.txt
+emNaviBase.egg-info/
+dist/*

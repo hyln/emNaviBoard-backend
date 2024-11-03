@@ -6,11 +6,19 @@ from utils.network_control import NetworkControl
 from utils.proxy_control import ProxyControl
 from typing import List
 import socket
-
+from utils.self_discover import SelfDiscover
+from flask_socketio import SocketIO, emit
+import shortuuid
 app = Flask(__name__)
 CORS(app)  # 允许所有来源的请求
-app.secret_key = 'your_secret_key'
+# app.secret_key = 'your_secret_key'
+
+# socketio = SocketIO(app, cors_allowed_origins="*")
+# 注意CORS(app) 并不能帮SocketIO 解决cors问题 需要cors_allowed_origins="*"
+
 auths:List[Auth] = []
+
+
 
 
 def is_port_in_use(port):
@@ -22,10 +30,12 @@ def is_port_in_use(port):
 def verify_login():
     # 检查是否登录
     device_id = request.args.get('device_id')
+    session_id = shortuuid.uuid()[:15]
+
     for i in auths:
         if i.get_device_id() == device_id:
-            return jsonify({'status': 'success'}), 200
-    return jsonify({'status': 'failure'}), 200
+            return jsonify({'status': 'success',"session_id": session_id}), 200
+    return jsonify({'status': 'failure',"session_id": session_id}), 200
 @app.route('/api/login', methods=['POST'])
 def login():
     print("Received request")
@@ -41,16 +51,17 @@ def login():
             auths.remove(i)
     # 登录
     auth = Auth(username,password)
-    ret,device_id =auth.verify_token()
+    ret,device_id,session_id =auth.verify_token()
     if ret:
         auths.append(auth)
         # 由于不使用数据库，所以登录时启动ttyd即可
         username = auth.get_username()
         password = auth.get_password()
-        if(not is_port_in_use(8389)):
-            subprocess.Popen(f'ttyd -p 8389 -W -b /ttyd/ bash', shell=True)
+        ttyd_port = 7681
+        if(not is_port_in_use(ttyd_port)):
+            subprocess.Popen(f'export TTYD_SESSION=true;cd ~ ; ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
             print("TTYD started.")
-        return jsonify({'status': 'success', 'device_id': device_id})
+        return jsonify({'status': 'success', 'device_id': device_id,"session_id": session_id}), 200
     else:
         return jsonify({'status': 'failure'}), 200
 
@@ -109,6 +120,7 @@ def get_wifi_list():
 def connect_wifi():
     # 判断是否登录
     device_id = request.json.get('device_id')
+    print(device_id)
     is_login = False
     auth = None
     for i in auths:
@@ -185,8 +197,33 @@ def upload():
 #             subprocess.Popen(f'ttyd -p 5001 -W bash', shell=True)
 #             return jsonify({'status': 'success', 'message': 'TTYD started.'}), 200
 #     return jsonify({'status': 'error', 'message': 'Failed to start TTYD.'}), 500
+# codeedit
+@app.route('/api/file-open', methods=['POST'])
+def file_open():
+    # 判断是否登录
+    device_id = request.json.get('device_id')
+    file_path = request.json.get('file_path') 
+    session_id = request.json.get('session_id')
+    for i in auths:
+        if i.get_device_id() == device_id:
+            data = request.json
+            enable_proxy = data.get('enable_proxy')
+            host = data.get('host')
+            port = data.get('port')
+            proxy_control = ProxyControl(i.get_username(),i.get_password()) 
+            proxy_control.set_proxy(enable_proxy,host,port)
+            return jsonify({'status': 'success', 'message': 'Proxy set successfully.'})
+    return jsonify({'status': 'error', 'message': 'Proxy set failed.'}), 500
 
+
+# @socketio.on('savefile')
+# def handle_message(msg):
+#     print('Message received: ' + msg)
+#     emit('response', 'Received: ' + msg, broadcast=True)
 
 if __name__ == '__main__':
+    self_discover = SelfDiscover()
     # 部署时通过nginx转发,不需要设置host
-    app.run(port=5000,host="127.0.0.1")
+    # app.run(port=5000,host="127.0.0.1")
+    app.run(port=5000,host="0.0.0.0")
+    # socketio.run(app, port=5000,host="0.0.0.0")

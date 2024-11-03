@@ -20,6 +20,20 @@ emNaviBoard，为机载电脑提供基础功能，
 - 快速网络操作
 - 断电遗忘
 
+## 部署
+
+### emcode
+
+为了上emcode仅在ttyd的环境中生效，需要在 `/etc/bash.bashrc` 的末尾增加
+```bash
+if [[ "$TTYD_SESSION" == "true" ]]; then
+    alias emcode='run emcode'
+fi
+```
+
+### ttyd 
+使用 7681 端口 
+
 
 ## Installation
 
