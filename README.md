@@ -45,11 +45,36 @@ To get started with the emNaviBoard Backend, follow these steps:
     cd emNaviBoard-backend
     ```
 
-2. **Install dependencies:**
     ```bash
-    pip install flask
+    sudo pip3 install -r requirements.txt
+    sudo pip3 install .
     ```
 
-## Usage
+## 开机自启动
 
-Once the application is running, you can access the API at `http://localhost:5000`. Refer to the API documentation for detailed information on available endpoints and their usage.
+```bash
+sudo vim /etc/systemd/system/emNaviBase.service
+```
+
+```
+[Unit]
+Description=emNaviBase
+After=network.target
+Wants=network.target
+
+[Service]
+ExecStart= /usr/bin/python3 -m emNaviBase.run
+WorkingDirectory=/home/emnavi
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl enable emNaviBase.service 
+systemctl restart emNaviBase.service 
+```
+
