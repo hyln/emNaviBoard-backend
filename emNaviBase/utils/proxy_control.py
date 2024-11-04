@@ -35,16 +35,16 @@ class ProxyControl:
     def _set_gnome_proxy(self, enable, host="127.0.0.1", port=7890):
         if enable: # 启动代理 
             commands = [
-                f"/usr/bin/gsettings set org.gnome.system.proxy.http host {host}",
-                "/usr/bin/gsettings set org.gnome.system.proxy.http port {port}",
-                "/usr/bin/gsettings set org.gnome.system.proxy.https host {host}",
-                "/usr/bin/gsettings set org.gnome.system.proxy.https port {port}",
-                "/usr/bin/gsettings set org.gnome.system.proxy mode manual",
+                f"dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.http host {host}",
+                "dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.http port {port}",
+                "dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.https host {host}",
+                "dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.https port {port}",
+                "dbus-launch /usr/bin/gsettings set org.gnome.system.proxy mode manual",
             ]
             for command in commands:
                 self.cmd_exec.run(command,use_sudo=False)   
         else: # 关闭代理
-            command = "/usr/bin/gsettings set org.gnome.system.proxy mode none"
+            command = "dbus-launch /usr/bin/gsettings set org.gnome.system.proxy mode none"
             self.cmd_exec.run(command,use_sudo=False)
     def _get_gnome_proxy_status(self):
         command = "/usr/bin/gsettings get org.gnome.system.proxy mode"
