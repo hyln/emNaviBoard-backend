@@ -36,9 +36,9 @@ class ProxyControl:
         if enable: # 启动代理 
             commands = [
                 f"dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.http host {host}",
-                "dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.http port {port}",
-                "dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.https host {host}",
-                "dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.https port {port}",
+                f"dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.http port {port}",
+                f"dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.https host {host}",
+                f"dbus-launch /usr/bin/gsettings set org.gnome.system.proxy.https port {port}",
                 "dbus-launch /usr/bin/gsettings set org.gnome.system.proxy mode manual",
             ]
             for command in commands:
