@@ -1,4 +1,5 @@
 shortuuid
 flask
 flask-cors
+flask_socketio
 pam

@@ -8,10 +8,10 @@ import shortuuid
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from .utils.auth import Auth
-from .utils.network_control import NetworkControl
-from .utils.proxy_control import ProxyControl
-from .utils.self_discover import SelfDiscover
+from emNaviBase.utils.auth import Auth
+from emNaviBase.utils.network_control import NetworkControl
+from emNaviBase.utils.proxy_control import ProxyControl
+from emNaviBase.utils.self_discover import SelfDiscover
 
 app = Flask(__name__)
 CORS(app)  # 允许所有来源的请求
