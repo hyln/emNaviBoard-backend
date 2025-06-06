@@ -1,7 +1,10 @@
 # emNaviBoard Backend
 ## Introduction
 
+> 请使用[emnaviBoard](https://github.com/hyln/emnaviBoard.git) 配置
+
 emNaviBoard Backend 是emNavi 设备工具集的后端，最初使用tauri框架构建，过程中发现rust的语法开发过于困难不适合后续维护，因此使用electron重写了。
+
 
 ## Features
 
@@ -56,6 +59,13 @@ WantedBy=multi-user.target
 systemctl enable emNaviBase.service 
 systemctl restart emNaviBase.service 
 ```
+
+### 配置前端界面
+
+```
+https://github.com/hyln/emnaviBoard
+```
+
 
 ## 端口占用
 
