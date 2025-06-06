@@ -64,7 +64,8 @@ def login():
         ttyd_port = 7681
         if(not is_port_in_use(ttyd_port)):
             # TODO: 根据不同用户启动不同的ttyd
-            subprocess.Popen(f'sudo -u {username} ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
+            proc = subprocess.Popen(f'sudo -u {username} ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
+            proc.wait()
             # subprocess.Popen(f'export TTYD_SESSION=true;cd ~ ; ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
             print("TTYD started.")
         return jsonify({'status': 'success', 'device_id': device_id,"session_id": session_id}), 200
