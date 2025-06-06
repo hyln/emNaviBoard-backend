@@ -78,17 +78,18 @@ https://github.com/hyln/emnaviBoard
 
 
 ```bash
+source /opt/emnaviboard/emnvboard-env/bin/activate
 # 重置root的密码为 emNavi
-sudo python3 -m emNaviBase.init.reset_default_root_passwd
+sudo python -m emNaviBase.init.reset_default_root_passwd
 # 清除缓存，制作系统快照前使用
-sudo python3 -m emNaviBase.init.clean_cache
+sudo python -m emNaviBase.init.clean_cache
 # 设置hostname
-sudo python3 -m emNaviBase.init.rename_hostname --prefix emNavi --drone_type X280 --custom_id 1
+sudo python -m emNaviBase.init.rename_hostname --prefix emNavi --drone_type X280 --custom_id 1
 # 修改用户名
-sudo python3 -m emNaviBase.init.rename_username 
+sudo python -m emNaviBase.init.rename_username 
 
 # 重置密码
-sudo python3 -m emNaviBase.init.reset_passwd emnavi 123456
+sudo python -m emNaviBase.init.reset_passwd emnavi 123456
 
 
 ```
