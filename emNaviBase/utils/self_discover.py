@@ -64,7 +64,7 @@ class SelfDiscover():
                 print(f"Broadcasting message: {json_message}")
                 time.sleep(self.broadcast_min_interval)
             else:
-                time.sleep(1)
+                time.sleep(0.5)
     def close(self):
         """关闭 UDP 套接字."""
         self.sock.close()
