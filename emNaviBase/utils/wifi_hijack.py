@@ -12,14 +12,17 @@ class WifiHijackManager:
 
         def monitor():
             end_time = time.time() + 60  # Run for 1 minute
+            print("WifiHijack Start")
             while time.time() < end_time:
                 self.nc.wifi_rescan()
                 time.sleep(1)
                 available_networks = self.nc.scan_wifi()
                 for network in available_networks:
                     if network['ssid'] == 'emNaviHijack':
-                        self.nc.connect_wifi('emNaviHijack', '12341234')
-                        return
+                        # 由于手机 不一定支持广播，所以这里直接开启AP模式
+                        self.nc.start_ap_mode()
+                        return # 只在开机后进行1分钟，切换后也马上退出，方便连接其他wifi
                 time.sleep(10)  # Check every 5 seconds
+            print("WifiHijack exit")
 
         threading.Thread(target=monitor, daemon=True).start()

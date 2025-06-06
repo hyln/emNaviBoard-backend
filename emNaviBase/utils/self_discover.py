@@ -54,7 +54,13 @@ class SelfDiscover():
                 self.running = False
                 self.device_info["ip_addresses"] = self.get_ip_addresses()
                 json_message = json.dumps(self.device_info)
-                self.sock.sendto(json_message.encode('utf-8'), (self.send_ip, self.send_port))
+
+                try:
+                    self.sock.sendto(json_message.encode('utf-8'), (self.send_ip, self.send_port))
+                except OSError as e:
+                    print(f"[SelfDiscover] Failed to send broadcast: {e}")                    
+                except Exception as e:
+                    print(f"[SelfDiscover] Unexpected error: {e}")
                 print(f"Broadcasting message: {json_message}")
                 time.sleep(self.broadcast_min_interval)
             else:

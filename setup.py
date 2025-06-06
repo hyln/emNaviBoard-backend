@@ -4,7 +4,7 @@ def parse_requirements(filename):
         return f.read().splitlines()
 setup(
     name='emNaviBase',  
-    version='0.1.0',         
+    version='0.1.1',         
     author='hyaline',      
     author_email='hyaline@emnavi.tech', 
     description='emNaviBase backend',  
