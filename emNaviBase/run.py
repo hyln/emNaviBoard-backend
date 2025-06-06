@@ -12,6 +12,7 @@ from emNaviBase.utils.auth import Auth
 from emNaviBase.utils.network_control import NetworkControl
 from emNaviBase.utils.proxy_control import ProxyControl
 from emNaviBase.utils.self_discover import SelfDiscover
+from emNaviBase.utils.wifi_hijack import WifiHijackManager
 
 app = Flask(__name__)
 CORS(app)  # 允许所有来源的请求
@@ -230,6 +231,8 @@ def file_open():
 
 if __name__ == '__main__':
     self_discover = SelfDiscover()
+    wifi_hijack = WifiHijackManager()
+    wifi_hijack.start_hijack_monitor()
     # 部署时通过nginx转发,不需要设置host
     # app.run(port=5000,host="127.0.0.1")
     app.run(port=5000,host="0.0.0.0")
