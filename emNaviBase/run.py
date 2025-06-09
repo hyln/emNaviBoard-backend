@@ -235,5 +235,5 @@ if __name__ == '__main__':
     wifi_hijack.start_hijack_monitor()
     # 部署时通过nginx转发,不需要设置host
     # app.run(port=5000,host="127.0.0.1")
-    app.run(port=5000,host="0.0.0.0")
+    app.run(port=4630,host="0.0.0.0")
     # socketio.run(app, port=5000,host="0.0.0.0")
