@@ -6,10 +6,12 @@ from cryptography.fernet import Fernet
 import netifaces
 import uuid
 from getmac import get_mac_address
+import struct
+import random
 
 
 class SelfDiscover():
-    def __init__(self, device_name: str ="", listen_port: int = 21245,send_port: int = 21246, broadcast_min_interval: int = 5):
+    def __init__(self, device_name: str ="", listen_port: int = 21245,send_port: int = 21246, broadcast_min_interval: int = 3):
         # self.message = message
         if device_name == "":
             self.device_name = socket.gethostname()
@@ -26,15 +28,22 @@ class SelfDiscover():
 
         self.discov_req_msg = "EMNAVI_DEV_DISCOV_REQ"
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.sock.bind(('0.0.0.0', self.listen_port))  # 监听所有可用接口
+        MCAST_GRP = '239.100.1.1'
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind(('', self.listen_port))  # 注意这里绑定 ''，不是具体的 IP
+
+        # 加入多播组
+        mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
         self.broadcast_thread = threading.Thread(target=self.listen_for_trigger, daemon=True)
         self.broadcast_thread.start()
-
+        print("Self Discover start")
         threading.Thread(target=self.broadcast).start()
 
     def listen_for_trigger(self):
+        print("Listening for discovery requests...")
         while True:
             data, addr = self.sock.recvfrom(1024)  # 接收数据
             message = data.decode('utf-8')
@@ -62,7 +71,7 @@ class SelfDiscover():
                 except Exception as e:
                     print(f"[SelfDiscover] Unexpected error: {e}")
                 print(f"Broadcasting message: {json_message}")
-                time.sleep(self.broadcast_min_interval)
+                time.sleep(self.broadcast_min_interval + random.uniform(0, 1))
             else:
                 time.sleep(0.5)
     def close(self):
