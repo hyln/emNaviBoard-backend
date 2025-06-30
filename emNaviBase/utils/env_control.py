@@ -1,14 +1,36 @@
 import subprocess
 import os
+import re
 from emNaviBase.utils.cmd_exec import CmdExec
+# from cmd_exec import CmdExec
+
 class EnvVariableManager:
-    def __init__(self, cmd_exec:CmdExec,file_path='/etc/environment'):
+    def __init__(self, cmd_exec:CmdExec,file_path='/etc/bash.bashrc'):
         self.file_path = file_path
         self.cmd_exec = cmd_exec
+        self.ensure_env_block()
+    
+    def ensure_env_block(self):
+        start_marker = "# emnavibase-start"
+        end_marker = "# emnavibase-end"
+
+        with open(self.file_path, 'r') as f:
+            lines = f.readlines()
+
+        start_exists = any(start_marker in line for line in lines)
+        end_exists = any(end_marker in line for line in lines)
+
+        if not start_exists or not end_exists:
+            with open(self.file_path, 'a') as f:
+                if not start_exists:
+                    f.write(f"\n{start_marker}\n")
+                if not end_exists:
+                    f.write(f"{end_marker}\n")
 
     def add_env_variable(self, key, value):
         if not self.variable_exists(key):
-            command = f'echo \'{key}="{value}"\' | sudo tee -a {self.file_path}'
+            command = f'tee -a {self.file_path} | sed -i "/# emnavibase-end/i export {key}=\\"{value}\\"" {self.file_path}'
+            print(command)
             try:
                 self.cmd_exec.run(command,use_sudo=True)
                 print(f"Variable '{key}' added successfully.")
@@ -19,19 +41,37 @@ class EnvVariableManager:
             print(f"Variable '{key}' already exists.")
 
     def modify_env_variable(self, key, new_value):
-        if not self.variable_exists(key):
-            print(f"Variable '{key}' does not exist.")
-            return
+        start_tag = '# emnavibase-start'
+        end_tag = '# emnavibase-end'
         temp_file_path = '/tmp/temp_env_file'
+
         with open(self.file_path, 'r') as f:
             lines = f.readlines()
 
+        in_block = False
+        modified = False
+
         with open(temp_file_path, 'w') as f:
             for line in lines:
-                if line.startswith(key):
-                    f.write(f'{key}="{new_value}"\n')
+                stripped = line.strip()
+
+                if stripped == start_tag:
+                    in_block = True
+                    f.write(line)
+                    continue
+                elif stripped == end_tag:
+                    in_block = False
+                    f.write(line)
+                    continue
+
+                if in_block and re.match(rf'export {key}=', stripped):
+                    f.write(f'export {key}="{new_value}"\n')
+                    modified = True
                 else:
                     f.write(line)
+
+        if not modified:
+            print(f"Variable '{key}' not found in the block.")
         self._replace_env_file(temp_file_path)
 
     def _replace_env_file(self, temp_file_path):
@@ -52,23 +92,49 @@ class EnvVariableManager:
         temp_file_path = '/tmp/temp_env_file'
         with open(self.file_path, 'r') as f:
             lines = f.readlines()
+
+        start_marker = "# emnavibase-start"
+        end_marker = "# emnavibase-end"
+
+        start_index = None
+        end_index = None
+
+        for i, line in enumerate(lines):
+            if start_marker in line:
+                start_index = i
+            if end_marker in line:
+                end_index = i
+
+        del_line_index = 0
+        if start_index is not None and end_index is not None and start_index < end_index:
+            lines = lines[:start_index + 1] + lines[end_index:]
+        for i, line in enumerate(lines):
+            if line.lstrip().startswith(f'export {key}='):
+                    lines.pop(i)
+                    break
+        start_marker = "# emnavibase-start"
+        end_marker = "# emnavibase-end"
+        
         with open(temp_file_path, 'w') as f:
             for line in lines:
-                if not line.startswith(key):
+                if not line.lstrip().startswith(f'export {key}='):
                     f.write(line)
         self._replace_env_file(temp_file_path)
  
     def find_env_variable(self, key):
-        # 不需要sudo权限
         with open(self.file_path, 'r') as f:
-            lines = f.readlines()
-        
-        for line in lines:
-            if line.startswith(key):
-                _, value = line.split('=', 1)  # 从 = 处分割，取后半部分
-                value = value.strip().strip('"')  # 去除两边的空白和引号
-                return True,value
-        return False,""
+            in_block = False
+            for line in f:
+                stripped = line.strip()
+                if stripped == '# emnavibase-start':
+                    in_block = True
+                elif stripped == '# emnavibase-end':
+                    in_block = False
+                elif in_block and stripped.startswith(f'export {key}='):
+                    _, value = stripped.split('=', 1)
+                    value = value.strip().strip('"')
+                    return True, value
+        return False, ""
     def variable_exists(self, key):
         ret,value = self.find_env_variable(key)
         return ret
@@ -78,7 +144,10 @@ class EnvVariableManager:
 
 # 示例用法
 if __name__ == "__main__":
-    manager = EnvVariableManager(CmdExec("hao","123"))
-    manager.add_env_variable('NEW_VAR', 'some_value')
-    manager.modify_env_variable('NEW_VAR', 'new_value')
+    manager = EnvVariableManager(CmdExec("hao","123"),"/media/hao/WorkSpace1/emnaviBoard/emNaviBoard-backend/emNaviBase/utils/test_env.txt")
+    manager.add_env_variable('NEW_VAR1', 'some_value')
+    manager.add_env_variable('NEW_VAR2', 'some_value')
+    manager.add_env_variable('NEW_VAR3', 'some_value')
+
+    manager.modify_env_variable('NEW_VAR1', 'new_value')
     manager.delete_env_variable('NEW_VAR')

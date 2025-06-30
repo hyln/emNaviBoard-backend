@@ -28,14 +28,21 @@ class SelfDiscover():
 
         self.discov_req_msg = "EMNAVI_DEV_DISCOV_REQ"
 
-        MCAST_GRP = '239.100.1.1'
+        MCAST_GRP = '224.0.0.1'
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(('', self.listen_port))  # 注意这里绑定 ''，不是具体的 IP
 
-        # 加入多播组
-        mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
-        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        for i in range(10):
+            try:
+                # 加入多播组
+                mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
+                self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+                print("Multicast group joined successfully.")
+                break
+            except OSError as e:
+                print(f"Attempt {i+1}: Multicast join failed, retrying in 1s... ({e})")
+                time.sleep(1)
 
         self.broadcast_thread = threading.Thread(target=self.listen_for_trigger, daemon=True)
         self.broadcast_thread.start()
