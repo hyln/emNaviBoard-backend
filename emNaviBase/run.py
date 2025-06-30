@@ -65,8 +65,8 @@ def login():
         ttyd_port = 7681
         if(not is_port_in_use(ttyd_port)):
             # TODO: 根据不同用户启动不同的ttyd
-            proc = subprocess.Popen(f'sudo -u {username} ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
-            proc.wait()
+            proc = subprocess.Popen(f'sudo -u {username} /opt/emnaviboard/pkg/ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
+            # proc.wait()
             # subprocess.Popen(f'export TTYD_SESSION=true;cd ~ ; ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
             print("TTYD started.")
         return jsonify({'status': 'success', 'device_id': device_id,"session_id": session_id}), 200
@@ -89,8 +89,10 @@ def get_ap_wifi_name():
     device_id = request.args.get('device_id')  # 获取 device_id 参数
     for i in auths:
         if i.get_device_id() == device_id:
-            network_control = NetworkControl(i.get_username(),i.get_password())
-            return jsonify({'status': 'success', 'ap_wifi_name': network_control.get_ap_wifi_name()})
+            pass
+            # TODO： Orin 不能使用AP模式，因此删掉
+            # network_control = NetworkControl(i.get_username(),i.get_password())
+            # return jsonify({'status': 'success', 'ap_wifi_name': network_control.get_ap_wifi_name()})
     return jsonify({'status': 'error', 'ap_wifi_name': ''})
 @app.route('/api/set-ap-mode', methods=['GET'])
 def set_ap_mode():
@@ -235,5 +237,5 @@ if __name__ == '__main__':
     wifi_hijack.start_hijack_monitor()
     # 部署时通过nginx转发,不需要设置host
     # app.run(port=5000,host="127.0.0.1")
-    app.run(port=5000,host="0.0.0.0")
+    app.run(port=4630,host="0.0.0.0")
     # socketio.run(app, port=5000,host="0.0.0.0")

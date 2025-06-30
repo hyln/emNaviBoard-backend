@@ -5,15 +5,13 @@
 
 emNaviBoard Backend 是emNavi 设备工具集的后端，最初使用tauri框架构建，过程中发现rust的语法开发过于困难不适合后续维护，因此使用electron重写了。
 
+## 特性
 
-## Features
+- 通过 emNaviHijack 快速连接(开机后1min内生效)
+- 提供一个基于网页的命令行界面(ttyd)
+- 可通过emNaviDiscover 快速发现设备
+- 可在GUI界面设置网络代理
 
-emNaviBoard，为机载电脑提供基础的快速访问功能，
-- 网页用户登录
-- 集成ttyd，提供基于网页的ssh访问
-- 快速在网页端进行wifi操作
-- 可通过在记载电脑附近设置一个wifi命名为 emNaviHijack 诱导 记载电脑wifi进入AP模式
-- 可快速设置
 
 ## 部署
 ### 安装

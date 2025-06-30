@@ -7,52 +7,53 @@ class NetworkControl():
     def __init__(self,username:str, password:str) -> None:
         self.cmd_exec = CmdExec(username,password)
         ret,host_name = self.cmd_exec.run("hostname")
-        self._ap_wifi_name = host_name+"_"+"5G"
+        self._ap_wifi_name = host_name
         self._wifi_device = "wlan0"
-        self._ap_name = "wifi_ap"
+        self._ap_name = "wifi_ap_emnavi" 
 
     def set_auth(self,auth:Auth):
         pass
 
-    def parse_wifi_output(self,output):
+    def parse_wifi_output(self, output):
         wifi_info = []
-        
-        # 使用正则表达式匹配 Cell 信息
-        cells = output.strip().split('Cell ')
-        for cell in cells[1:]:  # 跳过第一个元素
-            ssid_match = re.search(r'ESSID:"(.+?)"', cell)
-            signal_match = re.search(r'Signal level:(-?\d+) dBm', cell)
-            freq_match = re.search(r'Frequency[=: ]([\d.]+) GHz \(Channel (\d+)\)', cell)
-            key_match = re.search(r'Encryption key:(\w+)', cell)
-            
-            # 提取安全性信息
-            security_match = re.search(r'IE: (.+?)\n', cell)
-            security = None
-            if security_match:
-                # 查找 WPA 或 WPA2
-                if 'WPA2' in security_match.group(1):
-                    security = 'WPA2'
-                elif 'WPA3' in security_match.group(1):
-                    security = 'WPA3'
-                elif 'WPA' in security_match.group(1):
-                    security = 'WPA'
-                else:
-                    security = 'None'
 
-            if ssid_match and signal_match and freq_match and key_match:
-                ssid = ssid_match.group(1)
-                signal = signal_match.group(1) + ' dBm'
-                channel = freq_match.group(2)
-                # active = 'yes' if key_match.group(1) == 'on' else 'no'
-                active = 'no'
+        # 拆分 Cell 块
+        cells = re.split(r'\bCell \d+ - ', output)
+        for cell in cells[1:]:  # 跳过第一个空块
 
-                wifi_info.append({
-                    'ssid': ssid,
-                    'signal': signal,
-                    'channel': channel,
-                    'active': active,
-                    'security': security
-                })
+            ssid_match = re.search(r'ESSID:"(.*?)"', cell)
+            signal_match = re.search(r'Signal level[:=]-?\d+\.?\d*\s*dBm', cell)
+            signal_value = re.search(r'Signal level[:=](-?\d+\.?\d*)\s*dBm', cell)
+            freq_match = re.search(r'Frequency[=: ]([\d.]+)\s*GHz\s*\(Channel\s*(\d+)\)', cell)
+            key_match = re.search(r'Encryption key:(on|off)', cell, re.IGNORECASE)
+
+            # 默认值
+            ssid = ssid_match.group(1) if ssid_match else "<hidden>"
+            signal = signal_value.group(1) + " dBm" if signal_value else "N/A"
+            channel = freq_match.group(2) if freq_match else "N/A"
+            active = 'yes' if key_match and key_match.group(1).lower() == 'on' else 'no'
+
+            # 判断加密方式（尽量获取 WPA/WPA2/WPA3）
+            if 'WPA3' in cell:
+                security = 'WPA3'
+            elif 'WPA2' in cell:
+                security = 'WPA2'
+            elif 'WPA Version 1' in cell or 'WPA ' in cell:
+                security = 'WPA'
+            elif 'Encryption key:off' in cell:
+                security = 'Open'
+            else:
+                security = 'Unknown'
+            active = 'no'
+            wifi_info.append({
+                'ssid': ssid,
+                'signal': int(signal.split(" ")[0]),
+                'channel': channel,
+                'active': active,
+                'security': security
+            })
+            # Sort Wi-Fi information by signal strength in descending order
+            wifi_info.sort(key=lambda x: x['signal'], reverse=True)
 
         return wifi_info
     def get_ap_wifi_name(self):
@@ -107,7 +108,7 @@ class NetworkControl():
             if ret != 0:
                 print("connection delete failed")
                 return False
-        command_list = [
+        command_5_list = [
             f"nmcli con add type wifi ifname wlan0 mode ap con-name {ap_device_name} ssid {self._ap_wifi_name }",
             f"nmcli con modify {ap_device_name} 802-11-wireless.band a",
             f"nmcli con modify {ap_device_name} 802-11-wireless.channel 149",
@@ -121,6 +122,23 @@ class NetworkControl():
             f"nmcli con modify {ap_device_name} ipv4.method shared",
             f"nmcli con up {ap_device_name}"
         ]
+
+        command_2_4_list = [
+            f"nmcli con add type wifi ifname wlan0 mode ap con-name {ap_device_name} ssid {self._ap_wifi_name }",
+            f"nmcli con modify {ap_device_name} 802-11-wireless.band bg",
+            f"nmcli con modify {ap_device_name} 802-11-wireless.channel 10",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.key-mgmt wpa-psk",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.proto rsn",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.group ccmp",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.pairwise ccmp",
+            f"nmcli con modify {ap_device_name} 802-11-wireless-security.psk 12341234",
+            f"nmcli con modify {ap_device_name} ipv4.addresses 192.168.109.1/24",
+            f"nmcli con modify {ap_device_name} ipv4.gateway 192.168.109.1",
+            f"nmcli con modify {ap_device_name} ipv4.method shared",
+            f"nmcli con up {ap_device_name}"
+        ]
+        command_list = command_2_4_list
+
         for command in command_list:
             print(f"exec: {command}")
             ret,_ = self.cmd_exec.run(command,use_sudo=True)
@@ -161,11 +179,13 @@ class NetworkControl():
         try:
             command = f"iwlist {self._wifi_device} scan"
             ret,result = self.cmd_exec.run(command,use_sudo=True)
-            print(result)
+            # print(result)
             if ret != 0:
                 print("Error scanning Wi-Fi:", result)
                 return []
-            return self.parse_wifi_output(result)
+            res_parse = self.parse_wifi_output(result)
+            print(res_parse)
+            return res_parse
         except subprocess.CalledProcessError as e:
             print(f"Error scanning WiFi: {e}")
             return []
@@ -191,12 +211,45 @@ class NetworkControl():
         except subprocess.CalledProcessError as e:
             print(f"Error scanning WiFi: {e}")
             return []
+    def down_ap_role(self):
+        print("Down AP Role")
+        mode = self.get_current_mode()
+        if mode == "ap":
+            command = f"nmcli connection down {self._ap_name}"
+            ret,result = self.cmd_exec.run(command,use_sudo=True)
+            if ret == 0:
+                print("AP Role down successfully")
+                return True
+            else:
+                print(f"Failed to down AP Role: {result}")
+                return False
+        else:
+            print("Not in AP mode, no need to down")
+            return True
+    def reup_ap_role(self):
+        print("Reup AP Role")
+        mode = self.get_current_mode()
+        if mode == "ap":
+            command = f"nmcli connection up {self._ap_name}"
+            ret,result = self.cmd_exec.run(command,use_sudo=True)
+            if ret == 0:
+                print("AP Role reup successfully")
+                return True
+            else:
+                print(f"Failed to reup AP Role: {result}")
+                return False
+        else:
+            print("Not in AP mode, no need to reup")
+            return True
     def scan_wifi(self):
         print("Scanning WiFi")
         mode = self.get_current_mode()
         if mode == "ap":
             print("In AP mode, can't connect to wifi")
-            return self._scan_wifi_iwlist()
+            # self.down_ap_role()
+            result = self._scan_wifi_iwlist()
+            # self.reup_ap_role()
+            return result
         elif mode == "sta":
             print("In STA mode")
             return self._scan_wifi_nmcli()

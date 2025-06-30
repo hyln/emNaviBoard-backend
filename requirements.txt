@@ -5,3 +5,6 @@ flask_socketio
 pam
 getmac
 netifaces
+wheel
+six
+cryptography
