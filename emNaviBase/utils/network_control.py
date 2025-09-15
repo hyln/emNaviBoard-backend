@@ -1,8 +1,8 @@
 
 import subprocess
 import re
-from .auth import Auth
-from .cmd_exec import CmdExec
+from emNaviBase.utils.auth import Auth
+from emNaviBase.utils.cmd_exec import CmdExec
 class NetworkControl():
     def __init__(self,username:str, password:str) -> None:
         self.cmd_exec = CmdExec(username,password)

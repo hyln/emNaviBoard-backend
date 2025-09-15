@@ -14,22 +14,28 @@ class EnvVariableManager:
         start_marker = "# emnavibase-start"
         end_marker = "# emnavibase-end"
 
+        # 检查 https_proxy 环境变量是否有值，如果有则输出指定内容
+        bash_script = '''
+if [ ! -z "$https_proxy" ]; then
+    echo "Set Proxy:\t${https_proxy}"
+fi\n
+'''
+
         with open(self.file_path, 'r') as f:
             lines = f.readlines()
 
         start_exists = any(start_marker in line for line in lines)
         end_exists = any(end_marker in line for line in lines)
 
-        if not start_exists or not end_exists:
+        if not start_exists and not end_exists:
             with open(self.file_path, 'a') as f:
-                if not start_exists:
-                    f.write(f"\n{start_marker}\n")
-                if not end_exists:
-                    f.write(f"{end_marker}\n")
+                f.write(f"\n{start_marker}\n")
+                f.write(bash_script)
+                f.write(f"{end_marker}\n")
 
     def add_env_variable(self, key, value):
         if not self.variable_exists(key):
-            command = f'tee -a {self.file_path} | sed -i "/# emnavibase-end/i export {key}=\\"{value}\\"" {self.file_path}'
+            command = f'tee -a {self.file_path} | sed -i "/# emnavibase-start/a export {key}=\\"{value}\\"" {self.file_path}'
             print(command)
             try:
                 self.cmd_exec.run(command,use_sudo=True)

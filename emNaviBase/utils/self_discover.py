@@ -2,9 +2,7 @@ import threading
 import time
 import socket
 import json
-from cryptography.fernet import Fernet
 import netifaces
-import uuid
 from getmac import get_mac_address
 import struct
 import random
