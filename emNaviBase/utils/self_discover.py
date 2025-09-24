@@ -9,7 +9,7 @@ import random
 
 
 class SelfDiscover():
-    def __init__(self, device_name: str ="", listen_port: int = 21245,send_port: int = 21246, broadcast_min_interval: int = 3):
+    def __init__(self, device_name: str ="", listen_port: int = 21245,send_port: int = 21246, broadcast_min_interval: float = 0.5):
         # self.message = message
         if device_name == "":
             self.device_name = socket.gethostname()
@@ -21,6 +21,8 @@ class SelfDiscover():
         self.listen_port = listen_port
         self.send_port = send_port
         self.running = False
+        self.response_running_event = threading.Event()
+
         self.send_ip = "<broadcast>" # 要是没有的话就是广播
     
 
@@ -57,28 +59,27 @@ class SelfDiscover():
                 print("Triggering broadcast...")
                 self.send_ip = addr[0]
                 self.running = True
-                # self.broadcast_message()
+                self.response_running_event.set()
     def stop_broadcasting(self):
         """停止广播消息."""
-        self.running = False
+        self.response_running_event.clear()
     def broadcast(self):
-        """定期广播消息."""
+        """等待广播消息."""
         while True:
-            if(self.running):
-                self.running = False
-                self.device_info["ip_addresses"] = self.get_ip_addresses()
-                json_message = json.dumps(self.device_info)
+            self.response_running_event.wait()
+            self.device_info["ip_addresses"] = self.get_ip_addresses()
+            json_message = json.dumps(self.device_info)
+            try:
+                time.sleep(random.uniform(0, 1) )  # 随机延时，避免冲突
+                self.sock.sendto(json_message.encode('utf-8'), (self.send_ip, self.send_port))
+            except OSError as e:
+                print(f"[SelfDiscover] Failed to send broadcast: {e}")                    
+            except Exception as e:
+                print(f"[SelfDiscover] Unexpected error: {e}")
+            print(f"Broadcasting message: {json_message}")
+            time.sleep(self.broadcast_min_interval)
+            self.response_running_event.clear()
 
-                try:
-                    self.sock.sendto(json_message.encode('utf-8'), (self.send_ip, self.send_port))
-                except OSError as e:
-                    print(f"[SelfDiscover] Failed to send broadcast: {e}")                    
-                except Exception as e:
-                    print(f"[SelfDiscover] Unexpected error: {e}")
-                print(f"Broadcasting message: {json_message}")
-                time.sleep(self.broadcast_min_interval + random.uniform(0, 1))
-            else:
-                time.sleep(0.5)
     def close(self):
         """关闭 UDP 套接字."""
         self.sock.close()
