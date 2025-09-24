@@ -95,6 +95,7 @@ fi\n
         if not self.variable_exists(key):
             print(f"Variable '{key}' does not exist.")
             return
+
         temp_file_path = '/tmp/temp_env_file'
         with open(self.file_path, 'r') as f:
             lines = f.readlines()
@@ -102,30 +103,33 @@ fi\n
         start_marker = "# emnavibase-start"
         end_marker = "# emnavibase-end"
 
-        start_index = None
-        end_index = None
+        inside_block = False
+        new_lines = []
 
-        for i, line in enumerate(lines):
+        for line in lines:
+            stripped = line.lstrip()
+
             if start_marker in line:
-                start_index = i
-            if end_marker in line:
-                end_index = i
+                inside_block = True
+                new_lines.append(line)
+                continue
 
-        del_line_index = 0
-        if start_index is not None and end_index is not None and start_index < end_index:
-            lines = lines[:start_index + 1] + lines[end_index:]
-        for i, line in enumerate(lines):
-            if line.lstrip().startswith(f'export {key}='):
-                    lines.pop(i)
-                    break
-        start_marker = "# emnavibase-start"
-        end_marker = "# emnavibase-end"
-        
+            if end_marker in line:
+                inside_block = False
+                new_lines.append(line)
+                continue
+
+            # 如果在 block 里，跳过目标 key
+            if inside_block and stripped.startswith(f"export {key}="):
+                continue
+
+            new_lines.append(line)
+
         with open(temp_file_path, 'w') as f:
-            for line in lines:
-                if not line.lstrip().startswith(f'export {key}='):
-                    f.write(line)
+            f.writelines(new_lines)
+
         self._replace_env_file(temp_file_path)
+
  
     def find_env_variable(self, key):
         with open(self.file_path, 'r') as f:

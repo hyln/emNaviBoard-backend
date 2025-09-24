@@ -2,6 +2,7 @@ import subprocess
 from emNaviBase.utils.env_control import EnvVariableManager
 from emNaviBase.utils.cmd_exec import CmdExec
 class ProxyControl:
+    # 每次使用时都需要创建一个新的实例
     def __init__(self, username:str, password:str):
         self.cmd_exec = CmdExec(username,password)
         self.env_var_manager =EnvVariableManager(self.cmd_exec)
