@@ -13,7 +13,7 @@ from emNaviBase.utils.network_control import NetworkControl
 from emNaviBase.utils.proxy_control import ProxyControl
 from emNaviBase.utils.self_discover import SelfDiscover
 from emNaviBase.utils.wifi_hijack import WifiHijackManager
-
+from emNaviBase.utils.ttyd_manager import TTYDManager
 app = Flask(__name__)
 CORS(app)  # 允许所有来源的请求
 # app.secret_key = 'your_secret_key'
@@ -22,9 +22,8 @@ CORS(app)  # 允许所有来源的请求
 # 注意CORS(app) 并不能帮SocketIO 解决cors问题 需要cors_allowed_origins="*"
 
 auths:List[Auth] = []
-
-
-
+ttyd_manager = TTYDManager()
+ttyd_manager.start_ttyd_for_all_users()
 
 def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -62,16 +61,30 @@ def login():
         # 由于不使用数据库，所以登录时启动ttyd即可
         username = auth.get_username()
         password = auth.get_password()
-        ttyd_port = 7681
-        if(not is_port_in_use(ttyd_port)):
+        ttyd_index = ttyd_manager.get_ttyd_index(username)
+        ttyd_uuid = ttyd_manager.get_ttyd_uuid(username)
+        # ttyd_port = 7681
+        # if(not is_port_in_use(ttyd_port)):
             # TODO: 根据不同用户启动不同的ttyd
-            proc = subprocess.Popen(f'sudo -u {username} /opt/emnaviboard/pkg/ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
+            # proc = subprocess.Popen(f'sudo -u {username} /opt/emnaviboard/pkg/ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
             # proc.wait()
             # subprocess.Popen(f'export TTYD_SESSION=true;cd ~ ; ttyd -p {ttyd_port} -b /ttyd/ -W bash', shell=True)
-            print("TTYD started.")
-        return jsonify({'status': 'success', 'device_id': device_id,"session_id": session_id}), 200
+            # print("TTYD started.")
+        return jsonify({'status': 'success', 'device_id': device_id,"session_id": session_id,"ttyd_index": ttyd_index,"ttyd_uuid": ttyd_uuid}), 200
     else:
         return jsonify({'status': 'failure'}), 200
+@app.route('/api/getttyd', methods=['GET'])
+def open_ttyd():
+    device_id = request.args.get('device_id')
+    for i in auths:
+        if i.get_device_id() == device_id:
+            ttyd_index = ttyd_manager.get_ttyd_index(i.get_username())
+            ttyd_uuid = ttyd_manager.get_ttyd_uuid(i.get_username())
+            if ttyd_index:
+                return jsonify({'status': 'success', 'ttyd_index': ttyd_index,"ttyd_uuid": ttyd_uuid}), 200
+            else:
+                return jsonify({'status': 'error', 'message': 'TTYD not found'}), 404
+    return jsonify({'status': 'error', 'message': 'User not found'}), 404
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
