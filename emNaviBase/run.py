@@ -23,7 +23,6 @@ CORS(app)  # 允许所有来源的请求
 
 auths:List[Auth] = []
 ttyd_manager = TTYDManager()
-ttyd_manager.start_ttyd_for_all_users()
 
 def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -36,9 +35,13 @@ def verify_login():
     device_id = request.args.get('device_id')
     session_id = shortuuid.uuid()[:15]
 
+
     for i in auths:
         if i.get_device_id() == device_id:
-            return jsonify({'status': 'success',"session_id": session_id}), 200
+            username = i.get_username()
+            ttyd_index = ttyd_manager.get_ttyd_index(username)
+            ttyd_uuid = ttyd_manager.get_ttyd_uuid(username)
+            return jsonify({'status': 'success',"session_id": session_id,"ttyd_index": ttyd_index,"ttyd_uuid": ttyd_uuid}), 200
     return jsonify({'status': 'failure',"session_id": session_id}), 200
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -245,6 +248,8 @@ def file_open():
 #     emit('response', 'Received: ' + msg, broadcast=True)
 
 if __name__ == '__main__':
+    ttyd_manager.start_ttyd_for_all_users()
+
     self_discover = SelfDiscover()
     wifi_hijack = WifiHijackManager()
     wifi_hijack.start_hijack_monitor()
